@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+/<!DOCTYPE html>
 <html lang="lt">
 <head>
     <meta charset="UTF-8">
@@ -142,7 +142,7 @@ let seconds = 0;
 
 async function loadWordsFromFile() {
     try {
-        const response = await fetch('zodziai.txt');
+        const response = await fetch('lithuanian_casual_and_vulgar_nouns.txt');
         if (!response.ok) throw new Error('Nepavyko užkrauti failo');
         const text = await response.text();
         wordsPool = text.split('\n')
