@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Žodžių paieškos žaidimas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+        }
+        h1 { margin-bottom: 5px; color: #2c3e50; }
+        .stats {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #555;
+        }
+        .game-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 900px;
+        }
+        .grid-wrapper {
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .grid {
+            display: grid;
+            gap: 4px;
+        }
+        .cell {
+            width: 36px;
+            height: 36px;
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .cell.selected {
+            background-color: #3b82f6 !important;
+            color: white;
+            border-color: #2563eb;
+        }
+        .cell.found {
+            background-color: #bbf7d0 !important;
+            color: #166534;
+            border-color: #86efac;
+        }
+        .cell.error {
+            background-color: #fecaca !important;
+            color: #991b1b;
+            border-color: #f87171;
+            animation: shake 0.3s;
+        }
+        .sidebar {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            min-width: 200px;
+        }
+        .sidebar h3 { margin-top: 0; color: #1e293b; }
+        ul { list-style: none; padding: 0; margin: 0; }
+        li {
+            padding: 6px 0;
+            font-size: 1.05rem;
+            color: #64748b;
+        }
+        li.found {
+            text-decoration: line-through;
+            color: #166534;
+        }
+        .btn {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
+        }
+        .btn:hover { background-color: #1d4ed8; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Žodžių Paieška</h1>
+    <div class="stats" id="stats">Laikas: 0s | Rasta: 0 / 0</div>
+
+    <div class="game-container">
+        <div class="grid-wrapper">
+            <div id="grid" class="grid"></div>
+        </div>
+        <div class="sidebar">
+            <h3>Ieškomi žodžiai</h3>
+            <ul id="word-list"></ul>
+            <button class="btn" onclick="initGame()">Naujas žaidimas</button>
+        </div>
+    </div>
+
+<script>
+const DIRECTIONS = [[0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]];
+const LITHUANIAN_LETTERS = "AĄBCČDEĘĖFGHIĮYJKLMNOPRSŠTUŲŪVZŽ";
+
+let gridRows = 12;
+let gridCols = 12;
+let wordsPool = [];
+let placedWords = [];
+let gridData = [];
+let targetWords = [];
+let foundWords = new Set();
+
+let isMouseDown = false;
+let startCell = null;
+let currentSelectedCells = [];
+let timer = null;
+let seconds = 0;
+
+async function loadWordsFromFile() {
+    try {
+        const response = await fetch('zodziai.txt');
+        if (!response.ok) throw new Error('Nepavyko užkrauti failo');
+        const text = await response.text();
+        wordsPool = text.split('\n')
+                        .map(w => w.trim().toUpperCase())
+                        .filter(w => w.length >= 3);
+    } catch (e) {
+        console.warn('Nepavyko nuskaityti zodziai.txt, naudojami numatytieji žodžiai.', e);
+        wordsPool = ["PROGRAMA", "PIETŪS", "KODAS", "LENTELĖ", "MOKSLAS", "VILNIUS", "LIETUVA"];
+    }
+    initGame();
+}
+
+function initGame() {
+    clearInterval(timer);
+    seconds = 0;
+    foundWords.clear();
+    document.getElementById('stats').innerText = `Laikas: 0s | Rasta: 0 / 0`;
+
+    // Atsitinkamai atrenkame iki 10 žodžių
+    let shuffled = [...wordsPool].sort(() => 0.5 - Math.random());
+    targetWords = shuffled.slice(0, Math.min(10, shuffled.length));
+
+    if (targetWords.length === 0) {
+        alert("Failas 'zodziai.txt' tuščias arba jame nėra tinkamų žodžių!");
+        return;
+    }
+
+    generateGrid();
+    renderUI();
+    startTimer();
+}
+
+function startTimer() {
+    timer = setInterval(() => {
+        seconds++;
+        updateStatsText();
+    }, 1000);
+}
+
+function updateStatsText() {
+    document.getElementById('stats').innerText = `Laikas: ${seconds}s | Rasta: ${foundWords.size} / ${targetWords.length}`;
+}
+
+function generateGrid() {
+    gridData = Array.from({ length: gridRows }, () => Array(gridCols).fill(''));
+    placedWords = [];
+
+    for (let word of targetWords) {
+        let placed = false;
+        for (let attempt = 0; attempt < 100; attempt++) {
+            let [dr, dc] = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+            let k = word.length;
+            
+            let rOpts = [], cOpts = [];
+            for (let r = 0; r < gridRows; r++) if (r + (k-1)*dr >= 0 && r + (k-1)*dr < gridRows) rOpts.push(r);
+            for (let c = 0; c < gridCols; c++) if (c + (k-1)*dc >= 0 && c + (k-1)*dc < gridCols) cOpts.push(c);
+
+            if (rOpts.length === 0 || cOpts.length === 0) continue;
+
+            let r = rOpts[Math.floor(Math.random() * rOpts.length)];
+            let c = cOpts[Math.floor(Math.random() * cOpts.length)];
+
+            let conflict = false;
+            let coords = [];
+            for (let i = 0; i < k; i++) {
+                let nr = r + i * dr, nc = c + i * dc;
+                if (gridData[nr][nc] !== '' && gridData[nr][nc] !== word[i]) {
+                    conflict = true;
+                    break;
+                }
+                coords.push([nr, nc]);
+            }
+
+            if (!conflict) {
+                for (let i = 0; i < k; i++) {
+                    gridData[coords[i][0]][coords[i][1]] = word[i];
+                }
+                placedWords.push({ word, coords });
+                placed = true;
+                break;
+            }
+        }
+    }
+
+    // Užpildome tuščius langelius
+    for (let r = 0; r < gridRows; r++) {
+        for (let c = 0; c < gridCols; c++) {
+            if (gridData[r][c] === '') {
+                gridData[r][c] = LITHUANIAN_LETTERS[Math.floor(Math.random() * LITHUANIAN_LETTERS.length)];
+            }
+        }
+    }
+}
+
+function renderUI() {
+    const gridEl = document.getElementById('grid');
+    gridEl.style.gridTemplateColumns = `repeat(${gridCols}, 36px)`;
+    gridEl.innerHTML = '';
+
+    for (let r = 0; r < gridRows; r++) {
+        for (let c = 0; c < gridCols; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            cell.innerText = gridData[r][c];
+
+            cell.addEventListener('mousedown', (e) => onTouchStart(r, c, e));
+            cell.addEventListener('mouseenter', () => onTouchMove(r, c));
+            cell.addEventListener('touchstart', (e) => { e.preventDefault(); onTouchStart(r, c, e); });
+            cell.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                let touch = e.touches[0];
+                let target = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (target && target.classList.contains('cell')) {
+                    onTouchMove(parseInt(target.dataset.row), parseInt(target.dataset.col));
+                }
+            });
+
+            gridEl.appendChild(cell);
+        }
+    }
+
+    document.addEventListener('mouseup', onTouchEnd);
+    document.addEventListener('touchend', onTouchEnd);
+
+    const listEl = document.getElementById('word-list');
+    listEl.innerHTML = '';
+    targetWords.forEach(w => {
+        const li = document.createElement('li');
+        li.id = `word-${w}`;
+        li.innerText = w;
+        listEl.appendChild(li);
+    });
+}
+
+function getCellElement(r, c) {
+    return document.querySelector(`[data-row='${r}'][data-col='${c} ‘]`) || document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+}
+
+function onTouchStart(r, c, e) {
+    isMouseDown = true;
+    startCell = { r, c };
+    currentSelectedCells = [startCell];
+    updateSelectionUI();
+}
+
+function onTouchMove(r, c) {
+    if (!isMouseDown) return;
+    
+    let dr = r - startCell.r;
+    let dc = c - startCell.c;
+    
+    let steps = Math.max(Math.abs(dr), Math.abs(dc));
+    if (steps === 0) {
+        currentSelectedCells = [startCell];
+        updateSelectionUI();
+        return;
+    }
+
+    let stepR = dr === 0 ? 0 : dr / steps;
+    let stepC = dc === 0 ? 0 : dc / steps;
+
+    // Leidžiamos tik tiesios arba įstrižos kryptys (kampuose ar 45 laipsnių)
+    if (Math.abs(stepR) !== Math.abs(stepC) && stepR !== 0 && stepC !== 0) return;
+
+    let newSel = [];
+    for (let i = 0; i <= steps; i++) {
+        let nr = Math.round(startCell.r + i * stepR);
+        let nc = Math.round(startCell.c + i * stepC);
+        newSel.push({ r: nr, c: nc });
+    }
+    currentSelectedCells = newSel;
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+    document.querySelectorAll('.cell').forEach(c => {
+        if (!c.classList.contains('found')) c.classList.remove('selected');
+    });
+    currentSelectedCells.forEach(coord => {
+        let el = getCellElement(coord.r, coord.c);
+        if (el && !el.classList.contains('found')) el.classList.add('selected');
+    });
+}
+
+function onTouchEnd() {
+    if (!isMouseDown) return;
+    isMouseDown = false;
+
+    let selectedWord1 = currentSelectedCells.map(coord => gridData[coord.r][coord.c]).join('');
+    let selectedWord2 = [...selectedWord1].reverse().join('');
+
+    let matchedObj = placedWords.find(pw => pw.word === selectedWord1 || pw.word === selectedWord2);
+
+    if (matchedObj && !foundWords.has(matchedObj.word)) {
+        foundWords.add(matchedObj.word);
+        matchedObj.coords.forEach(([r, c]) => {
+            let el = getCellElement(r, c);
+            if (el) {
+                el.classList.remove('selected');
+                el.classList.add('found');
+            }
+        });
+        document.getElementById(`word-${matchedObj.word}`).classList.add('found');
+        updateStatsText();
+
+        if (foundWords.size === targetWords.length) {
+            clearInterval(timer);
+            setTimeout(() => alert(`Sveikiname! Laimėjote per ${seconds} sek.`), 200);
+        }
+    } else {
+        // Klaidos blyksnis
+        currentSelectedCells.forEach(coord => {
+            let el = getCellElement(coord.r, coord.c);
+            if (el && !el.classList.contains('found')) {
+                el.classList.remove('selected');
+                el.classList.add('error');
+            }
+        });
+        setTimeout(() => {
+            document.querySelectorAll('.cell.error').forEach(c => c.classList.remove('error'));
+        }, 400);
+    }
+    currentSelectedCells = [];
+    updateSelectionUI();
+}
+
+window.onload = loadWordsFromFile;
+</script>
+</body>
+</html>
