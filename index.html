@@ -401,12 +401,13 @@ function onTouchMove(r, c) {
 }
 
 function updateSelectionUI() {
-    document.querySelectorAll('.cell').forEach(c => {
-        if (!c.classList.contains('found')) c.classList.remove('selected');
-    });
+    // 1. Išvalome 'selected' klasę nuo visų langelių
+    document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+
+    // 2. Nuspalviname MĖLYNAI visus pasirinkimo trajektorijos langelius (net jei jie jau buvo žali)
     currentSelectedCells.forEach(coord => {
         let el = getCellElement(coord.r, coord.c);
-        if (el && !el.classList.contains('found')) el.classList.add('selected');
+        if (el) el.classList.add('selected');
     });
 }
 
@@ -423,10 +424,7 @@ function onTouchEnd() {
         foundWords.add(matchedObj.word);
         matchedObj.coords.forEach(([r, c]) => {
             let el = getCellElement(r, c);
-            if (el) {
-                el.classList.remove('selected');
-                el.classList.add('found');
-            }
+            if (el) el.classList.add('found');
         });
         updateStatsText();
 
@@ -435,10 +433,10 @@ function onTouchEnd() {
             triggerVictory();
         }
     } else {
+        // Neteisingas pasirinkimas: raudonai blyksteli tik tie langeliai, kurie dar nėra surasti
         currentSelectedCells.forEach(coord => {
             let el = getCellElement(coord.r, coord.c);
             if (el && !el.classList.contains('found')) {
-                el.classList.remove('selected');
                 el.classList.add('error');
             }
         });
@@ -446,6 +444,7 @@ function onTouchEnd() {
             document.querySelectorAll('.cell.error').forEach(c => c.classList.remove('error'));
         }, 400);
     }
+
     currentSelectedCells = [];
     updateSelectionUI();
 }
