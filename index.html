@@ -105,17 +105,18 @@
             transition: background-color 0.2s, border-color 0.2s;
         }
 
-        .cell.selected {
-            background-color: #3b82f6 !important;
-            color: white;
-            border-color: #2563eb;
-        }
-
-        .cell.found {
-            background-color: #bbf7d0 !important;
-            color: #166534;
-            border-color: #86efac;
-        }
+	.cell.found {
+	    background-color: #bbf7d0;
+	    color: #166534;
+	    border-color: #86efac;
+	}
+	
+	/* Placed below .cell.found so dragging takes priority */
+	.cell.selected {
+	    background-color: #3b82f6 !important;
+	    color: white !important;
+	    border-color: #2563eb !important;
+	}
 
         .cell.error {
             background-color: #fecaca !important;
@@ -401,10 +402,10 @@ function onTouchMove(r, c) {
 }
 
 function updateSelectionUI() {
-    // 1. Išvalome 'selected' klasę nuo visų langelių
+    // Clear selection from all cells
     document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
 
-    // 2. Nuspalviname MĖLYNAI visus pasirinkimo trajektorijos langelius (net jei jie jau buvo žali)
+    // Highlight every cell in the current path blue
     currentSelectedCells.forEach(coord => {
         let el = getCellElement(coord.r, coord.c);
         if (el) el.classList.add('selected');
@@ -433,7 +434,7 @@ function onTouchEnd() {
             triggerVictory();
         }
     } else {
-        // Neteisingas pasirinkimas: raudonai blyksteli tik tie langeliai, kurie dar nėra surasti
+        // Flash red only on cells that were not previously found
         currentSelectedCells.forEach(coord => {
             let el = getCellElement(coord.r, coord.c);
             if (el && !el.classList.contains('found')) {
