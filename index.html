@@ -1,9 +1,9 @@
-/<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="lt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Žodžių paieškos žaidimas</title>
+    <title>Žodžių paieška (18+)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,28 +17,79 @@
             user-select: none;
         }
         h1 { margin-bottom: 5px; color: #2c3e50; }
+
+        .nsfw-warning {
+            background-color: #fee2e2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #ffffff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .controls label {
+            font-weight: bold;
+            color: #475569;
+        }
+
+        .controls select {
+            padding: 6px 10px;
+            font-size: 1rem;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .instructions {
+            background-color: #e0f2fe;
+            border-left: 4px solid #0284c7;
+            color: #0369a1;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            max-width: 600px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
         .stats {
             font-size: 1.1rem;
             margin-bottom: 15px;
             color: #555;
+            font-weight: bold;
         }
+
         .game-container {
             display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 900px;
+            flex-direction: column;
+            align-items: center;
         }
+
         .grid-wrapper {
             background: #ffffff;
             padding: 15px;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
+
         .grid {
             display: grid;
             gap: 4px;
         }
+
         .cell {
             width: 36px;
             height: 36px;
@@ -53,72 +104,94 @@
             cursor: pointer;
             transition: background-color 0.2s, border-color 0.2s;
         }
+
         .cell.selected {
             background-color: #3b82f6 !important;
             color: white;
             border-color: #2563eb;
         }
+
         .cell.found {
             background-color: #bbf7d0 !important;
             color: #166534;
             border-color: #86efac;
         }
+
         .cell.error {
             background-color: #fecaca !important;
             color: #991b1b;
             border-color: #f87171;
             animation: shake 0.3s;
         }
-        .sidebar {
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            min-width: 200px;
-        }
-        .sidebar h3 { margin-top: 0; color: #1e293b; }
-        ul { list-style: none; padding: 0; margin: 0; }
-        li {
-            padding: 6px 0;
-            font-size: 1.05rem;
-            color: #64748b;
-        }
-        li.found {
-            text-decoration: line-through;
-            color: #166534;
-        }
+
         .btn {
-            margin-top: 15px;
-            padding: 10px 15px;
+            padding: 8px 16px;
             background-color: #2563eb;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-size: 1rem;
-            width: 100%;
+            font-weight: bold;
         }
+
         .btn:hover { background-color: #1d4ed8; }
+
+        .victory-banner {
+            display: none;
+            margin-top: 20px;
+            padding: 15px 30px;
+            background-color: #22c55e;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+            text-align: center;
+        }
+
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-4px); }
             75% { transform: translateX(4px); }
         }
+
+        @keyframes victory-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .flash {
+            animation: victory-flash 0.4s infinite;
+        }
     </style>
 </head>
 <body>
 
+    <div class="nsfw-warning">
+        NSFW, šiame žaidime naudojama nenorminė leksika; jei jums mažiau nei 18 metų, užsirakinkite kambario duris
+    </div>
+
     <h1>Žodžių Paieška</h1>
+
+    <div class="controls">
+        <label for="grid-size">Dydis:</label>
+        <select id="grid-size"></select>
+        <button class="btn" onclick="initGame()">Žaisti</button>
+    </div>
+
+    <div class="instructions">
+        Raskite paslėptus žodžius visomis aštuoniomis kryptimis; radę žodį, tempkite pele nuo jo pirmos iki paskutinės raidės
+    </div>
+
     <div class="stats" id="stats">Laikas: 0s | Rasta: 0 / 0</div>
 
     <div class="game-container">
-        <div class="grid-wrapper">
+        <div class="grid-wrapper" id="grid-wrapper">
             <div id="grid" class="grid"></div>
         </div>
-        <div class="sidebar">
-            <h3>Ieškomi žodžiai</h3>
-            <ul id="word-list"></ul>
-            <button class="btn" onclick="initGame()">Naujas žaidimas</button>
+        <div id="victory-banner" class="victory-banner">
+            Tu tikras bachūras!
         </div>
     </div>
 
@@ -126,12 +199,11 @@
 const DIRECTIONS = [[0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]];
 const LITHUANIAN_LETTERS = "AĄBCČDEĘĖFGHIĮYJKLMNOPRSŠTUŲŪVZŽ";
 
-let gridRows = 12;
-let gridCols = 12;
+let gridRows = 10;
+let gridCols = 10;
 let wordsPool = [];
 let placedWords = [];
 let gridData = [];
-let targetWords = [];
 let foundWords = new Set();
 
 let isMouseDown = false;
@@ -140,17 +212,30 @@ let currentSelectedCells = [];
 let timer = null;
 let seconds = 0;
 
+function setupDropdown() {
+    const select = document.getElementById('grid-size');
+    select.innerHTML = '';
+    for (let i = 5; i <= 15; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.innerText = `${i}x${i}`;
+        if (i === 10) opt.selected = true;
+        select.appendChild(opt);
+    }
+}
+
 async function loadWordsFromFile() {
+    setupDropdown();
     try {
-        const response = await fetch('lithuanian_casual_and_vulgar_nouns.txt');
+        const response = await fetch('zodziai.txt');
         if (!response.ok) throw new Error('Nepavyko užkrauti failo');
         const text = await response.text();
         wordsPool = text.split('\n')
                         .map(w => w.trim().toUpperCase())
-                        .filter(w => w.length >= 3);
+                        .filter(w => w.length >= 2);
     } catch (e) {
         console.warn('Nepavyko nuskaityti zodziai.txt, naudojami numatytieji žodžiai.', e);
-        wordsPool = ["PROGRAMA", "PIETŪS", "KODAS", "LENTELĖ", "MOKSLAS", "VILNIUS", "LIETUVA"];
+        wordsPool = ["KODAS", "LENTELĖ", "MOKSLAS", "VILNIUS", "LIETUVA"];
     }
     initGame();
 }
@@ -159,19 +244,20 @@ function initGame() {
     clearInterval(timer);
     seconds = 0;
     foundWords.clear();
-    document.getElementById('stats').innerText = `Laikas: 0s | Rasta: 0 / 0`;
 
-    // Atsitinkamai atrenkame iki 10 žodžių
-    let shuffled = [...wordsPool].sort(() => 0.5 - Math.random());
-    targetWords = shuffled.slice(0, Math.min(10, shuffled.length));
+    const banner = document.getElementById('victory-banner');
+    banner.style.display = 'none';
 
-    if (targetWords.length === 0) {
-        alert("Failas 'zodziai.txt' tuščias arba jame nėra tinkamų žodžių!");
-        return;
-    }
+    const wrapper = document.getElementById('grid-wrapper');
+    wrapper.classList.remove('flash');
+
+    const size = parseInt(document.getElementById('grid-size').value);
+    gridRows = size;
+    gridCols = size;
 
     generateGrid();
     renderUI();
+    updateStatsText();
     startTimer();
 }
 
@@ -183,19 +269,24 @@ function startTimer() {
 }
 
 function updateStatsText() {
-    document.getElementById('stats').innerText = `Laikas: ${seconds}s | Rasta: ${foundWords.size} / ${targetWords.length}`;
+    document.getElementById('stats').innerText = `Laikas: ${seconds}s | Rasta: ${foundWords.size} / ${placedWords.length}`;
 }
 
 function generateGrid() {
     gridData = Array.from({ length: gridRows }, () => Array(gridCols).fill(''));
     placedWords = [];
 
-    for (let word of targetWords) {
+    // Sumaišome žodžius ir bandome sutalpinti kuo daugiau
+    let availableWords = [...wordsPool].sort(() => 0.5 - Math.random());
+
+    for (let word of availableWords) {
+        if (word.length > Math.max(gridRows, gridCols)) continue;
+
         let placed = false;
         for (let attempt = 0; attempt < 100; attempt++) {
             let [dr, dc] = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
             let k = word.length;
-            
+
             let rOpts = [], cOpts = [];
             for (let r = 0; r < gridRows; r++) if (r + (k-1)*dr >= 0 && r + (k-1)*dr < gridRows) rOpts.push(r);
             for (let c = 0; c < gridCols; c++) if (c + (k-1)*dc >= 0 && c + (k-1)*dc < gridCols) cOpts.push(c);
@@ -268,19 +359,10 @@ function renderUI() {
 
     document.addEventListener('mouseup', onTouchEnd);
     document.addEventListener('touchend', onTouchEnd);
-
-    const listEl = document.getElementById('word-list');
-    listEl.innerHTML = '';
-    targetWords.forEach(w => {
-        const li = document.createElement('li');
-        li.id = `word-${w}`;
-        li.innerText = w;
-        listEl.appendChild(li);
-    });
 }
 
 function getCellElement(r, c) {
-    return document.querySelector(`[data-row='${r}'][data-col='${c} ‘]`) || document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+    return document.querySelector(`[data-row='${r}'][data-col='${c}']`);
 }
 
 function onTouchStart(r, c, e) {
@@ -292,10 +374,10 @@ function onTouchStart(r, c, e) {
 
 function onTouchMove(r, c) {
     if (!isMouseDown) return;
-    
+
     let dr = r - startCell.r;
     let dc = c - startCell.c;
-    
+
     let steps = Math.max(Math.abs(dr), Math.abs(dc));
     if (steps === 0) {
         currentSelectedCells = [startCell];
@@ -306,7 +388,6 @@ function onTouchMove(r, c) {
     let stepR = dr === 0 ? 0 : dr / steps;
     let stepC = dc === 0 ? 0 : dc / steps;
 
-    // Leidžiamos tik tiesios arba įstrižos kryptys (kampuose ar 45 laipsnių)
     if (Math.abs(stepR) !== Math.abs(stepC) && stepR !== 0 && stepC !== 0) return;
 
     let newSel = [];
@@ -347,15 +428,13 @@ function onTouchEnd() {
                 el.classList.add('found');
             }
         });
-        document.getElementById(`word-${matchedObj.word}`).classList.add('found');
         updateStatsText();
 
-        if (foundWords.size === targetWords.length) {
+        if (foundWords.size === placedWords.length && placedWords.length > 0) {
             clearInterval(timer);
-            setTimeout(() => alert(`Sveikiname! Laimėjote per ${seconds} sek.`), 200);
+            triggerVictory();
         }
     } else {
-        // Klaidos blyksnis
         currentSelectedCells.forEach(coord => {
             let el = getCellElement(coord.r, coord.c);
             if (el && !el.classList.contains('found')) {
@@ -369,6 +448,17 @@ function onTouchEnd() {
     }
     currentSelectedCells = [];
     updateSelectionUI();
+}
+
+function triggerVictory() {
+    const wrapper = document.getElementById('grid-wrapper');
+    const banner = document.getElementById('victory-banner');
+
+    wrapper.classList.add('flash');
+    setTimeout(() => {
+        wrapper.classList.remove('flash');
+        banner.style.display = 'block';
+    }, 2000);
 }
 
 window.onload = loadWordsFromFile;
