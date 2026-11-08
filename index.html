@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Žodžių paieška (18+)</title>
+    <title>Surask bazarą (18+)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -173,7 +173,7 @@
         NSFW, šiame žaidime naudojama nenorminė leksika; jei jums mažiau nei 18 metų, užsirakinkite kambario duris
     </div>
 
-    <h1>Žodžių Paieška</h1>
+    <h1>Surask bazarą</h1>
 
     <div class="controls">
         <label for="grid-size">Dydis:</label>
@@ -192,7 +192,7 @@
             <div id="grid" class="grid"></div>
         </div>
         <div id="victory-banner" class="victory-banner">
-            Tu tikras bachūras!
+            Tu tikras bachūras/krasavica!
         </div>
     </div>
 
@@ -220,7 +220,7 @@ function setupDropdown() {
         const opt = document.createElement('option');
         opt.value = i;
         opt.innerText = `${i}x${i}`;
-        if (i === 10) opt.selected = true;
+        if (i === 5) opt.selected = true;
         select.appendChild(opt);
     }
 }
