@@ -231,12 +231,16 @@ async function loadWordsFromFile() {
         const response = await fetch('zodziai.txt');
         if (!response.ok) throw new Error('Nepavyko užkrauti failo');
         const text = await response.text();
-        wordsPool = text.split('\n')
+        
+        let rawWords = text.split('\n')
                         .map(w => w.trim().toUpperCase())
                         .filter(w => w.length >= 2);
+        
+        // Pašaliname dublikatus naudojant Set
+        wordsPool = [...new Set(rawWords)];
     } catch (e) {
         console.warn('Nepavyko nuskaityti zodziai.txt, naudojami numatytieji žodžiai.', e);
-        wordsPool = ["KODAS", "LENTELĖ", "MOKSLAS", "VILNIUS", "LIETUVA"];
+        wordsPool = [...new Set(["KODAS", "LENTELĖ", "MOKSLAS", "VILNIUS", "LIETUVA"])];
     }
     initGame();
 }
